@@ -140,3 +140,53 @@ c2.metric("Tentativi", st.session_state.attempts)
 perc = (st.session_state.correct / st.session_state.attempts * 100) if st.session_state.attempts else 0
 c3.metric("Accuratezza", f"{perc:.0f}%")
 st.caption("Suggerimento: tocca **🎲 Nuovo termine** per iniziare.")
+
+# ----------------------
+# Modalità aggiunta vocabolo
+# ----------------------
+
+import re
+
+# Funzione per convertire pinyin numerico in pinyin con accenti
+def convert_pinyin_numbered(pinyin):
+    tone_marks = {
+        'a': ['ā', 'á', 'ǎ', 'à'],
+        'e': ['ē', 'é', 'ě', 'è'],
+        'i': ['ī', 'í', 'ǐ', 'ì'],
+        'o': ['ō', 'ó', 'ǒ', 'ò'],
+        'u': ['ū', 'ú', 'ǔ', 'ù'],
+        'ü': ['ǖ', 'ǘ', 'ǚ', 'ǜ']
+    }
+
+    def replace_syllable(syllable):
+        match = re.match(r"([a-zü]+)([1-5])", syllable)
+        if not match:
+            return syllable
+        base, tone = match.groups()
+        tone = int(tone)
+        if tone == 5:  # tono neutro
+            return base
+        # ordine di priorità per il posizionamento del tono
+        for vowel in 'a', 'e', 'o', 'iu', 'ü', 'i', 'u':
+            for v in vowel:
+                if v in base:
+                    return base.replace(v, tone_marks[v][tone-1])
+        return base
+
+    return ' '.join(replace_syllable(s) for s in pinyin.split())
+
+st.subheader("➕ Aggiungi un nuovo vocabolo")
+
+with st.form("add_vocab_form"):
+    new_chars = st.text_input("Caratteri", "")
+    new_pinyin = st.text_input("Pinyin (puoi usare numeri es. wen4)", "")
+    new_trad = st.text_input("Traduzione", "")
+    submitted = st.form_submit_button("Salva nel vocabolario")
+
+    if submitted:
+        if new_chars and new_pinyin and new_trad:
+            pinyin_converted = convert_pinyin_numbered(new_pinyin.strip())
+            ws.append_row([new_chars, pinyin_converted, new_trad, "0"])
+            st.success(f"✅ Aggiunto: {new_chars} - {pinyin_converted} - {new_trad}")
+        else:
+            st.error("❌ Inserisci tutti i campi.")
